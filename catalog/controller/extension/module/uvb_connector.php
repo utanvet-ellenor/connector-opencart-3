@@ -8,6 +8,17 @@
  */
 
 class ControllerExtensionModuleUVBConnector extends Controller {
+    /**
+     * UVB Session LifeTime in minute
+     * @var int
+     */
+    private $uvbLifeTime = 1;
+
+    /**
+     * @var bool
+     */
+    private $useSessionLifeTime = true;
+
     // catalog/view/checkout/payment_method/before
     public function checkCustomerByUVBConnector(&$route, &$data)
     {
@@ -19,11 +30,16 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                 $this->load->model('account/customer');
                 $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
                 $email = $customer_info['email'];
-            } elseif (isset($this->session->data['guest'])) {
-                $email = $this->session->data['guest']['email'];
+            }else {
+                if (isset($this->session->data['guest'])){
+                    $email = $this->session->data['guest']['email'];
+                }
             }
 
-            if ($this->config->get('module_uvb_connector_sandbox') && isset($this->session->data['user_id']) && isset($this->session->data['user_token'])){
+            if ($this->config->get('module_uvb_connector_sandbox') &&
+                isset($this->session->data['user_id']) &&
+                isset($this->session->data['user_token']) &&
+                $this->config->get('module_uvb_connector_test_email')){
                 $email = $this->config->get('module_uvb_connector_test_email');
             }
 
@@ -37,25 +53,20 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                 'addressLine' => '',
             );
 
-            unset($this->session->data['uvb_connector']);
-            if(isset($this->session->data['uvb_connector'])) {
-                //Handling Error Codes and delete session uvb response if necessary
-                switch ($this->session->data['uvb_connector']['status']){
-                    case 200: // OK
-                        $response = $this->session->data['uvb_connector'];
-                        break;
-                    case 403: // Run out of request quota for this month
-                        unset($this->session->data['uvb_connector']);
-                        $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
-                        break;
-                    default:
-                        $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
-                }
+            if($this->hasActiveUVB($email) && $this->session->data['uvb_connector']['status'] == 200) {
+                $response = $this->session->data['uvb_connector'];
             }else{
-                $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
+                $response = $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
             }
 
             if ($response){
+
+                if ($this->useSessionLifeTime){
+                    $response['email'] = $email;
+                    $response['life_time'] = time() + ($this->uvbLifeTime * 60);
+                    $this->session->data['uvb_connector'] = $response;
+                }
+
                 if($response['message']['totalRate'] < (float)$this->config->get('module_uvb_connector_reputation_threshold')){
                     // Remove Payment Methods
                     foreach ($this->config->get('module_uvb_connector_disabled_payment_methods') as $code){
@@ -68,9 +79,6 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                         $data['error_warning'] = '';
                     }
                 }
-
-                $this->session->data['uvb_connector'] = $response;
-                $this->session->data['uvb_connector']['a'] = time();
             }
         }
     }
@@ -119,6 +127,25 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
             }
         }
+    }
+
+    /**
+     *
+     * Get Active UVB Response from session
+     *
+     * @param string $email
+     * @return bool
+     */
+    private function hasActiveUVB(string $email): bool{
+        if(isset($this->session->data['uvb_connector']) && $this->session->data['uvb_connector']['email'] == $email){
+            if ((int)$this->session->data['uvb_connector']['life_time'] < time() ){
+                unset($this->session->data['uvb_connector']);
+                return false;
+            }else{
+                return true;
+            }
+        }
+        return false;
     }
 
 }

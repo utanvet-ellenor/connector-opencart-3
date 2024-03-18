@@ -17,7 +17,7 @@ class ModelExtensionModuleUVBConnector extends Model {
     /**
      * @var
      */
-    private $response = [];
+    private $response = array();
 
     /**
      * Check e-mail reputation
@@ -154,24 +154,28 @@ class ModelExtensionModuleUVBConnector extends Model {
                 curl_setopt($ch,CURLOPT_CONNECTTIMEOUT ,3);
                 curl_setopt($ch,CURLOPT_TIMEOUT, 20);
                 curl_setopt($ch, CURLOPT_HTTPHEADER,array(
-                    //'Content-Type: application/json', // Errort ad vissza
                     'Authorization: Basic ' . base64_encode($publicApiKey .':'.$privateApiKey)
                 ));
 
                 $response = curl_exec($ch);
                 curl_close ($ch);
 
-                $this->response = json_decode($response,true);
-
                 $logData = [
                     'url' => $url,
-                    'response' => $this->response,
                     'payload' => $payload,
                 ];
-                $this->log(self::LOG_INFO,$logData);
+
+                if ($response){
+                    $logData['response'] = $response;
+                    $this->response = json_decode($response,true);
+                    $this->log(self::LOG_INFO,$logData);
+                }else{
+                    $logData['response'] = 'No response';
+                    $this->log(self::LOG_ERROR,$logData);
+                }
 
             } catch (Exception $e) {
-                $this->log(self::LOG_INFO,$e->getMessage());
+                $this->log(self::LOG_ERROR,$e->getMessage());
             }
         }else{
             $this->log(self::LOG_ERROR,'Missing Private or Public Key.');
