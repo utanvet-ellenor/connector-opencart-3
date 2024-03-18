@@ -25,22 +25,13 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         if($this->config->get('module_uvb_connector_status') && in_array((int)$this->config->get('config_store_id'),$this->config->get('module_uvb_connector_stores') ?? array()) && $this->config->get('module_uvb_connector_disabled_payment_methods')){
 
             // Set Email
-            $email = '';
+            $email = 'no_email_found';
             if ($this->customer->isLogged()){
                 $this->load->model('account/customer');
                 $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
                 $email = $customer_info['email'];
-            }else {
-                if (isset($this->session->data['guest'])){
-                    $email = $this->session->data['guest']['email'];
-                }
-            }
-
-            if ($this->config->get('module_uvb_connector_sandbox') &&
-                isset($this->session->data['user_id']) &&
-                isset($this->session->data['user_token']) &&
-                $this->config->get('module_uvb_connector_test_email')){
-                $email = $this->config->get('module_uvb_connector_test_email');
+            }elseif(isset($this->session->data['guest'])) {
+                $email = $this->session->data['guest']['email'];
             }
 
             $this->load->model('extension/module/uvb_connector');
@@ -56,7 +47,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             if($this->hasActiveUVB($email) && $this->session->data['uvb_connector']['status'] == 200) {
                 $response = $this->session->data['uvb_connector'];
             }else{
-                $response = $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
+                $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
             }
 
             if ($response){
@@ -67,7 +58,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                     $this->session->data['uvb_connector'] = $response;
                 }
 
-                if($response['message']['totalRate'] < (float)$this->config->get('module_uvb_connector_reputation_threshold')){
+                if($response['status'] == 200 && $response['message']['totalRate'] < (float)$this->config->get('module_uvb_connector_reputation_threshold')){
                     // Remove Payment Methods
                     foreach ($this->config->get('module_uvb_connector_disabled_payment_methods') as $code){
                         unset($data['payment_methods'][$code]);

@@ -11,8 +11,8 @@ class ModelExtensionModuleUVBConnector extends Model {
     const LOG_FILENAME = "uvb_connector.log";
     const SANDBOX_BASE_URL = 'https://sandbox.utanvet-ellenor.hu/api/v1/signals/';
     const PRODUCTION_BASE_URL = 'https://utanvet-ellenor.hu/api/v1/signals/';
-    const LOG_ERROR = 'Error';
-    const LOG_INFO = 'Info';
+    const LOG_ERROR = 'ERROR';
+    const LOG_INFO = 'INFO';
 
     /**
      * @var
@@ -168,11 +168,13 @@ class ModelExtensionModuleUVBConnector extends Model {
                 if ($response){
                     $logData['response'] = $response;
                     $this->response = json_decode($response,true);
-                    $this->log(self::LOG_INFO,$logData);
+                    $logType = self::LOG_INFO;
                 }else{
                     $logData['response'] = 'No response';
-                    $this->log(self::LOG_ERROR,$logData);
+                    $logType = self::LOG_ERROR;
                 }
+
+                $this->log($logType,$logData);
 
             } catch (Exception $e) {
                 $this->log(self::LOG_ERROR,$e->getMessage());

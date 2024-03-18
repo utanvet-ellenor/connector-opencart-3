@@ -3,7 +3,7 @@
     <div class="page-header">
         <div class="container-fluid">
             <div class="pull-right">
-                <button type="submit" form="form-module" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
+                <button type="submit" form="form-uvb-connector" data-toggle="tooltip" title="{{ button_save }}" class="btn btn-primary"><i class="fa fa-save"></i></button>
                 <a href="{{ cancel }}" data-toggle="tooltip" title="{{ button_cancel }}" class="btn btn-default"><i class="fa fa-reply"></i></a></div>
             <h1>{{ heading_title }}</h1>
             <ul class="breadcrumb">
@@ -48,7 +48,7 @@
                 <div class="tab-content">
                     <div class="tab-pane active" id="tab-general">
 
-                        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-module" class="form-horizontal">
+                        <form action="{{ action }}" method="post" enctype="multipart/form-data" id="form-uvb-connector" class="form-horizontal">
                             <div class="form-group">
                                 <label class="col-sm-2 control-label" for="input-public-key">{{ entry_public_key }}</label>
                                 <div class="col-sm-10">
@@ -71,20 +71,6 @@
                                         <label class="radio-inline"><input type="radio" name="module_uvb_connector_sandbox" value="1"> {{ text_yes }}</label>
                                         <label class="radio-inline"><input type="radio" name="module_uvb_connector_sandbox" value="0" checked="checked"> {{ text_no }}</label>
                                     {% endif %}
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="col-sm-2 control-label" for="input-test-email">{{ entry_test_email }}</label>
-                                <div class="col-sm-10">
-                                    <select name="module_uvb_connector_test_email" id="input-test-email" class="form-control">
-                                        {% if module_uvb_connector_test_email == 'success' %}
-                                            <option value="dummy-success@utanvet-ellenor.hu" selected="selected">dummy-success@utanvet-ellenor.hu ({{ entry_good }})</option>
-                                            <option value="dummy-fail@utanvet-ellenor.hu">dummy-fail@utanvet-ellenor.hu ({{ entry_bad }})</option>
-                                        {% else %}
-                                            <option value="dummy-success@utanvet-ellenor.hu">dummy-success@utanvet-ellenor.hu ({{ entry_good }})</option>
-                                            <option value="dummy-fail@utanvet-ellenor.hu" selected="selected">dummy-fail@utanvet-ellenor.hu ({{ entry_bad }})</option>
-                                        {% endif %}
-                                    </select>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -202,8 +188,6 @@
                         </div>
                     </div>
                 </div>
-
-
             </div>
         </div>
     </div>
