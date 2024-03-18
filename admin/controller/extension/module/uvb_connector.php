@@ -11,7 +11,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     const LOG_FILENAME = "uvb_connector.log";
     const UVB_MODULE_VERSION = '1.0';
     const EVENT_GET = 'uvb_connector_get';
-    const EVENT_POST = 'uvb_connector_get';
+    const EVENT_POST = 'uvb_connector_post';
     const EVENT_MENU = 'uvb_connector_admin_menu';
 
     private $error = array();
@@ -65,7 +65,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         $data['uvb_link_knowledge_base'] = 'https://utanvet-ellenor.hu/knowledge-base/?utm_source=bs_module&utm_medium=opencart&utm_campaign=';
         $data['uvb_link_register'] = 'https://utanvet-ellenor.hu/register/?utm_source=bs_module&utm_medium=opencart&utm_campaign=';
         $data['uvb_link_login'] = 'https://utanvet-ellenor.hu/login/?utm_source=bs_module&utm_medium=opencart&utm_campaign=';
-        $data['uvb_link_support'] = 'mailto:info@webelite.hu?subject=Help:UVB Connector Module for OpenCart 3x';
+        $data['uvb_link_support'] = 'mailto:info@webelite.hu?subject=Help:UVB Connector Module for OpenCart';
 
         // Order Statuses
         $this->load->model('localisation/order_status');
