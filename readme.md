@@ -11,3 +11,4 @@
 ```
 - Tömörítsük be pl.: uvb_connector_1.0_oc3.ocmod.zip-be
 
+(git repo update)
