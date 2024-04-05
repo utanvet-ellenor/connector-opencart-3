@@ -19,6 +19,65 @@ class ControllerExtensionModuleUVBConnector extends Controller {
      */
     private $useSessionLifeTime = true;
 
+    private $journalJavaScriptFile = 'catalog/view/javascript/uvb_connector.js';
+
+    // catalog/controller/checkout/checkout/before
+    public function loadUVBConnectorScript(&$route,&$data,&$output){
+        if ($this->config->get('config_theme') === 'journal3'){
+            if($this->journal3->settings->get('activeCheckout') === 'journal'){
+                $this->journal3->document->addScript($this->journalJavaScriptFile,'footer');
+            }
+        }
+    }
+
+    public function checkCustomerEmailAjax(){
+        $json = [];
+
+        if($this->config->get('module_uvb_connector_status') && in_array((int)$this->config->get('config_store_id'),$this->config->get('module_uvb_connector_stores') ?? array()) && $this->config->get('module_uvb_connector_disabled_payment_methods')){
+            $email = $this->request->post['uvb_email'];
+
+            $this->load->model('extension/module/uvb_connector');
+
+            $uvbConnectorGetData = array(
+                'email' => $email,
+                'phoneNumber' => '',
+                'countryCode' => '',
+                'postalCode' => '',
+                'addressLine' => '',
+            );
+
+            if($this->hasActiveUVB($email) && $this->session->data['uvb_connector']['status'] == 200) {
+                $response = $this->session->data['uvb_connector'];
+            }else{
+                $response = $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
+            }
+
+            if ($response){
+
+                if ($this->useSessionLifeTime){
+                    $response['email'] = $email;
+                    $response['life_time'] = time() + ($this->uvbLifeTime * 60);
+                    $this->session->data['uvb_connector'] = $response;
+                }
+
+                if($response['status'] == 200 && $response['message']['totalRate'] < (float)$this->config->get('module_uvb_connector_reputation_threshold')){
+                    // Remove Payment Methods
+                    foreach ($this->config->get('module_uvb_connector_disabled_payment_methods') as $code){
+                        if (isset($this->session->data['payment_methods'][$code])){
+                            $json['disabled_payment_methods'][] = [
+                                'code' => $code,
+                                'text_error' => 'Ez a fizetési mód jelenleg nem elérhető: <span style="font-weight: bolder">' . $this->session->data['payment_methods'][$code]['title'] . '</span>',
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        $this->response->addHeader('Content-Type: application/json');
+        $this->response->setOutput(json_encode($json));
+    }
+
     // catalog/view/checkout/payment_method/before
     public function checkCustomerByUVBConnector(&$route, &$data)
     {
@@ -72,6 +131,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                 }
             }
         }
+
     }
 
     // catalog/model/checkout/order/addOrderHistory/after
