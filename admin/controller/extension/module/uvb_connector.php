@@ -14,6 +14,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     const EVENT_POST = 'uvb_connector_post';
     const EVENT_MENU = 'uvb_connector_admin_menu';
     const EVENT_MENU_ICON = 'uvb_admin_menu_icon';
+    const EVENT_JOURNAL_SCRIPT = 'uvb_script_loader';
 
     private $error = array();
 
@@ -190,6 +191,12 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             $data['module_uvb_connector_status_bad'] = $this->config->get('module_uvb_connector_status_bad');
         }
 
+        if (isset($this->request->post['module_uvb_connector_stores'])) {
+            $data['module_uvb_connector_stores'] = $this->request->post['module_uvb_connector_stores'];
+        } else {
+            $data['module_uvb_connector_stores'] = $this->config->get('module_uvb_connector_stores');
+        }
+
         if (isset($this->request->post['module_uvb_connector_disabled_payment_methods'])) {
             $data['module_uvb_connector_disabled_payment_methods'] = $this->request->post['module_uvb_connector_disabled_payment_methods'];
         } else {
@@ -200,12 +207,6 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             $data['module_uvb_connector_enabled_shipping_methods'] = $this->request->post['module_uvb_connector_enabled_shipping_methods'];
         } else {
             $data['module_uvb_connector_enabled_shipping_methods'] = $this->config->get('module_uvb_connector_enabled_shipping_methods');
-        }
-
-        if (isset($this->request->post['module_uvb_connector_stores'])) {
-            $data['module_uvb_connector_stores'] = $this->request->post['module_uvb_connector_stores'];
-        } else {
-            $data['module_uvb_connector_stores'] = $this->config->get('module_uvb_connector_stores');
         }
 
         if (isset($this->request->post['module_uvb_connector_status'])) {
@@ -313,19 +314,23 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     }
 
     public function install(){
+        // Add Module Events
         $this->load->model('setting/event');
         $this->model_setting_event->addEvent(self::EVENT_GET, 'catalog/view/checkout/payment_method/before', 'extension/module/uvb_connector/checkCustomerByUVBConnector');
         $this->model_setting_event->addEvent(self::EVENT_POST, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/module/uvb_connector/submitOrderOutcomeToUVBApi');
         $this->model_setting_event->addEvent(self::EVENT_MENU, 'admin/view/common/column_left/before', 'extension/module/uvb_connector/addUVBConnectorMenuToAdminMenu');
         $this->model_setting_event->addEvent(self::EVENT_MENU_ICON, 'admin/view/common/column_left/after', 'extension/module/uvb_connector/modifyAdminMenuIcon');
+        $this->model_setting_event->addEvent(self::EVENT_JOURNAL_SCRIPT, 'catalog/controller/checkout/checkout/after', 'extension/module/uvb_connector/loadUVBConnectorScript');
     }
 
     public function uninstall(){
+        // Remove Module Events
         $this->load->model('setting/event');
         $this->model_setting_event->deleteEventByCode(self::EVENT_GET);
         $this->model_setting_event->deleteEventByCode(self::EVENT_POST);
         $this->model_setting_event->deleteEventByCode(self::EVENT_MENU);
         $this->model_setting_event->deleteEventByCode(self::EVENT_MENU_ICON);
+        $this->model_setting_event->deleteEventByCode(self::EVENT_JOURNAL_SCRIPT);
     }
 
 }
