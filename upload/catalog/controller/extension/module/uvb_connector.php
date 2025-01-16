@@ -208,17 +208,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
      * @return bool
      */
     private function validatedEmail($email) {
-        return filter_var($email, FILTER_VALIDATE_EMAIL) && $this->validMxRecord($email);
-    }
-
-    /**
-     * Check Email Valid MX Record
-     * @param string $email
-     * @return bool
-     */
-    private function validMxRecord($email) {
-        list($userName, $domain) = explode("@", $email);
-        return checkdnsrr($domain);
+        return filter_var($email, FILTER_VALIDATE_EMAIL);
     }
 
     /**
