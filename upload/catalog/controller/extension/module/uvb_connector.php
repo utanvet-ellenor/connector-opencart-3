@@ -29,7 +29,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
      */
     // catalog/model/extension/payment/cod/getMethod/after
     public function handlePaymentMethod(&$route,&$data,&$method_data) {
-        if ($this->isUVBActive() && !$this->checkCustomerByUVBConnector()) {
+        if($this->cart->hasShipping() && $this->isUVBActive() && !$this->checkCustomerByUVBConnector()) {
             $method_data = array();
         }
     }
@@ -102,7 +102,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         if (!$this->isJournalQuickCheckout() && $this->request->get['route'] === 'checkout/payment_method') {
             $orderData = $this->session->data;
-            $sameAddress = $this->session->data['same_address'];
+            $sameAddress = isset($this->request->post['shipping_address']);
 
             if ($this->customer->isLogged()) {
                 $this->load->model('account/customer');
