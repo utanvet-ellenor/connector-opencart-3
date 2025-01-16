@@ -37,5 +37,6 @@ $_['entry_status']                      = 'Státusz';
 $_['help_reputation_threshold']         = 'A hashhez tartozó reputációt a következő képlettel számoljuk: (jó - rossz) / (jó + rossz), Vagyis a 0.5-ös reputáció azt jelenti, hogy 6 átvett és 2 át nem vett.';
 
 // Error
+$_['error_threshold']                   = 'Reputation threshold kötelező';
 $_['error_log_warning']                 = 'Figyelem: A log file %s mérete %s!';
 $_['error_permission']                  = 'Nincs jogosultságod ehhez a művelethez';

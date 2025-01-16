@@ -9,12 +9,11 @@
 
 class ControllerExtensionModuleUVBConnector extends Controller {
     const LOG_FILENAME = "uvb_connector.log";
-    const UVB_MODULE_VERSION = '1.0';
-    const EVENT_GET = 'uvb_connector_get';
+    const UVB_MODULE_VERSION = '2.0';
     const EVENT_POST = 'uvb_connector_post';
     const EVENT_MENU = 'uvb_connector_admin_menu';
     const EVENT_MENU_ICON = 'uvb_admin_menu_icon';
-    const EVENT_JOURNAL_SCRIPT = 'uvb_script_loader';
+    const EVENT_PAYMENT = 'uvb_connector_payment_';
 
     private $error = array();
 
@@ -27,11 +26,18 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         $this->load->model('setting/setting');
 
         if (($this->request->server['REQUEST_METHOD'] == 'POST') && $this->validate()) {
+
+            $this->deletePaymentMethodEvents();
+            if (isset($this->request->post['module_uvb_connector_disabled_payment_methods'])) {
+                foreach ($this->request->post['module_uvb_connector_disabled_payment_methods'] as $code) {
+                    $this->addPaymentMethodEventByCode($code);
+                }
+            }
+
             $this->model_setting_setting->editSetting('module_uvb_connector', $this->request->post);
 
             $this->session->data['success'] = $this->language->get('text_success');
 
-            //$this->response->redirect($this->url->link('marketplace/extension', 'user_token=' . $this->session->data['user_token'] . '&type=module', true));
             $this->response->redirect($this->url->link('extension/module/uvb_connector', 'user_token=' . $this->session->data['user_token'] . '&type=module', true));
         }
 
@@ -39,6 +45,12 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             $data['error_warning'] = $this->error['warning'];
         } else {
             $data['error_warning'] = '';
+        }
+
+        if (isset($this->error['threshold'])) {
+            $data['error_threshold'] = $this->error['threshold'];
+        } else {
+            $data['error_threshold'] = '';
         }
 
         $data['breadcrumbs'] = array();
@@ -227,6 +239,10 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             $this->error['warning'] = $this->language->get('error_permission');
         }
 
+        if (!$this->request->post['module_uvb_connector_reputation_threshold']) {
+            $this->error['threshold'] = $this->language->get('error_threshold');
+        }
+
         return !$this->error;
     }
 
@@ -316,21 +332,37 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     public function install(){
         // Add Module Events
         $this->load->model('setting/event');
-        $this->model_setting_event->addEvent(self::EVENT_GET, 'catalog/view/checkout/payment_method/before', 'extension/module/uvb_connector/checkCustomerByUVBConnector');
+
         $this->model_setting_event->addEvent(self::EVENT_POST, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/module/uvb_connector/submitOrderOutcomeToUVBApi');
         $this->model_setting_event->addEvent(self::EVENT_MENU, 'admin/view/common/column_left/before', 'extension/module/uvb_connector/addUVBConnectorMenuToAdminMenu');
         $this->model_setting_event->addEvent(self::EVENT_MENU_ICON, 'admin/view/common/column_left/after', 'extension/module/uvb_connector/modifyAdminMenuIcon');
-        $this->model_setting_event->addEvent(self::EVENT_JOURNAL_SCRIPT, 'catalog/controller/checkout/checkout/after', 'extension/module/uvb_connector/loadUVBConnectorScript');
     }
 
     public function uninstall(){
         // Remove Module Events
         $this->load->model('setting/event');
-        $this->model_setting_event->deleteEventByCode(self::EVENT_GET);
+
         $this->model_setting_event->deleteEventByCode(self::EVENT_POST);
         $this->model_setting_event->deleteEventByCode(self::EVENT_MENU);
         $this->model_setting_event->deleteEventByCode(self::EVENT_MENU_ICON);
-        $this->model_setting_event->deleteEventByCode(self::EVENT_JOURNAL_SCRIPT);
+
+        $this->deletePaymentMethodEvents();
+    }
+
+    private function addPaymentMethodEventByCode($code) {
+        $this->model_setting_event->addEvent(self::EVENT_PAYMENT . $code, 'catalog/model/extension/payment/'. $code . '/getMethod/after', 'extension/module/uvb_connector/handlePaymentMethod');
+    }
+
+    private function deletePaymentMethodEvents() {
+
+        $files = glob(DIR_APPLICATION . 'controller/extension/payment/*.php');
+
+        if ($files) {
+            foreach ($files as $file) {
+                $extension = basename($file, '.php');
+                $this->model_setting_event->deleteEventByCode(self::EVENT_PAYMENT . $extension);
+            }
+        }
     }
 
 }
