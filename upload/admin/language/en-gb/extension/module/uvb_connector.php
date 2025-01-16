@@ -37,5 +37,6 @@ $_['entry_status']                      = 'Status';
 $_['help_reputation_threshold']         = 'Calculated with the following formula: (good-bad) / all, so a 0.5 reputation can mean 6 successful and 2 rejected deliveries.';
 
 // Error
+$_['error_threshold']                   = 'Reputation threshold required';
 $_['error_log_warning']                 = 'Warning: Your log file %s is %s!';
 $_['error_permission']                  = 'Warning: You do not have permission to modify UVB Connector module!';

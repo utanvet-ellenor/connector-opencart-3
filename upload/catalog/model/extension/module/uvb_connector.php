@@ -8,11 +8,17 @@
  */
 
 class ModelExtensionModuleUVBConnector extends Model {
+
     const LOG_FILENAME = "uvb_connector.log";
-    const SANDBOX_BASE_URL = 'https://sandbox.utanvet-ellenor.hu/api/v1/signals/';
-    const PRODUCTION_BASE_URL = 'https://utanvet-ellenor.hu/api/v1/signals/';
+    const SANDBOX_BASE_URL = 'https://sandbox.utanvet-ellenor.hu/api/';
+    const PRODUCTION_BASE_URL = 'https://utanvet-ellenor.hu/api/';
     const LOG_ERROR = 'ERROR';
     const LOG_INFO = 'INFO';
+
+    private $requestUrl = '/request';
+    private $signalUrl = '/signal';
+
+    private $apiVersion = 'v2';
 
     /**
      * @var
@@ -25,9 +31,8 @@ class ModelExtensionModuleUVBConnector extends Model {
      * @param array $data
      * @return array
      */
-    public function get(array $data): array
+    public function get(array $data)
     {
-
         $this->_checkUVBService($data);
 
         return $this->response;
@@ -38,7 +43,7 @@ class ModelExtensionModuleUVBConnector extends Model {
      * @param array $order_data
      * @return array
      */
-    public function post(array $order_data): array
+    public function post(array $order_data)
     {
         $this->_submitToUVBService($order_data);
 
@@ -50,85 +55,30 @@ class ModelExtensionModuleUVBConnector extends Model {
      * @param array $data
      * @return void
      */
-    private function _checkUVBService(array $data) : void
+    private function _checkUVBService($payload)
     {
-        if($this->validateEmail($data['email'])){
-            $emailHash = $this->getEmailHash($data['email']);
-            $payload = array();
-
-            $payload['threshold'] = $this->config->get('module_uvb_connector_reputation_threshold');
-
-            // It will be in next UVB Connector version
-            //$payload['phoneNumber'] = $data['phoneNumber'];
-            //$payload['countryCode'] = $data['countryCode'];
-            //$payload['postalCode'] = $data['postalCode'];
-            //$payload['addressLine'] = $data['addressLine'];
-
-            $this->getHTTPResponse($this->getBaseUrl() . $emailHash,$payload);
-        }else{
-            $this->log(self::LOG_ERROR,'Incorrect email address: ' . $data['email']);
-        }
+        $this->getHTTPResponse($this->getBaseUrl() . $this->requestUrl , $payload);
     }
 
     /**
      * Submit payload to UVB Signals API endpoint
      *
-     * @param  $data
+     * @param  $payload
      * @return void
      */
-    private function _submitToUVBService($data) : void
+    private function _submitToUVBService($payload)
     {
-        if($this->validateEmail($data['email'])){
-            $payload = array(
-                'emailHash' => $this->getEmailHash($data['email']),
-                'outcome' => $data['outcome'],
-                'orderId' => $data['orderId'],
-                'phoneNumber' => $data['phoneNumber'],
-                'countryCode' => $data['countryCode'],
-                'postalCode' => $data['postalCode'],
-                'addressLine' => $data['addressLine'],
-            );
-
-            $this->getHTTPResponse($this->getBaseUrl(),$payload);
-        }else{
-            $this->log(self::LOG_ERROR,'Incorrect email: ' . $data['email'] . ' - order_id' . $data['order_id']);
-        }
+        $this->getHTTPResponse($this->getBaseUrl() . $this->signalUrl , $payload);
     }
 
     /**
      * Get Base Url API
      * @return string
      */
-    private function getBaseUrl(): string
-    {
-        return $this->config->get('module_uvb_connector_sandbox') ? self::SANDBOX_BASE_URL : self::PRODUCTION_BASE_URL;
-    }
-
-    /**
-     * The hash produced by sha256 hashing the e-mail.
-     *
-     * @param string $email
-     * @return string
-     */
-    private function getEmailHash(string $email): string
-    {
-        $email = preg_replace('/(.+)\+.*(@.+)/', '$1$2', $email);
-
-        // Lowercase e-mail address
-        $email = strtolower($email);
-
-        // Hash the string with sha256sum
-        return hash('sha256', $email);
-    }
-
-    /**
-     * Email validator
-     *
-     * @param string $email
-     * @return bool
-     */
-    private function validateEmail(string $email): bool{
-        return filter_var($email, FILTER_VALIDATE_EMAIL);
+    private function getBaseUrl() {
+        return $this->config->get('module_uvb_connector_sandbox')
+            ? self::SANDBOX_BASE_URL . $this->apiVersion
+            : self::PRODUCTION_BASE_URL . $this->apiVersion;
     }
 
     /**
@@ -138,8 +88,7 @@ class ModelExtensionModuleUVBConnector extends Model {
      * @param array $payload
      * @return void
      */
-    private function getHTTPResponse(string $url,array $payload): void
-    {
+    private function getHTTPResponse($url,array $payload) {
         $publicApiKey = trim($this->config->get('module_uvb_connector_public_key'));
         $privateApiKey = trim($this->config->get('module_uvb_connector_private_key'));
 
@@ -149,12 +98,13 @@ class ModelExtensionModuleUVBConnector extends Model {
                 $ch = curl_init();
                 curl_setopt($ch,CURLOPT_URL,$url);
                 curl_setopt($ch,CURLOPT_POST, 1);
-                curl_setopt($ch,CURLOPT_POSTFIELDS,http_build_query($payload));
+                curl_setopt($ch,CURLOPT_POSTFIELDS,$payload);
                 curl_setopt($ch,CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch,CURLOPT_CONNECTTIMEOUT ,3);
                 curl_setopt($ch,CURLOPT_TIMEOUT, 20);
                 curl_setopt($ch, CURLOPT_HTTPHEADER,array(
-                    'Authorization: Basic ' . base64_encode($publicApiKey .':'.$privateApiKey)
+                    'Authorization: Basic ' . base64_encode($publicApiKey .':'.$privateApiKey),
+                    'Accept: application/json'
                 ));
 
                 $response = curl_exec($ch);
@@ -165,7 +115,7 @@ class ModelExtensionModuleUVBConnector extends Model {
                     'payload' => $payload,
                 ];
 
-                if ($response){
+                if ($response) {
                     $logData['response'] = $response;
                     $this->response = json_decode($response,true);
                     $logType = self::LOG_INFO;
@@ -191,7 +141,7 @@ class ModelExtensionModuleUVBConnector extends Model {
      * @param mixed $data
      * @return void
      */
-    private function log(string $type,$data): void
+    private function log($type,$data)
     {
         if ($this->config->get('module_uvb_connector_log')){
             if (is_array($data)) {
