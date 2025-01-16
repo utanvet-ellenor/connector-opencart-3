@@ -87,6 +87,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             'threshold' => $this->config->get('module_uvb_connector_reputation_threshold'),
         );
 
+        // Journal Checkout
         if ($this->isJournalQuickCheckout() && isset($this->request->post['order_data'])) {
             $orderData = $this->request->post['order_data'];
             $sameAddress = $this->request->post['same_address'];
@@ -100,23 +101,25 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         }
 
+        // OpenCart Checkout
         if (!$this->isJournalQuickCheckout() && $this->request->get['route'] === 'checkout/payment_method') {
-            $orderData = $this->session->data;
-            $sameAddress = isset($this->request->post['shipping_address']);
-
             if ($this->customer->isLogged()) {
                 $this->load->model('account/customer');
                 $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
                 $data['email'] = $customer_info['email'];
                 $data['phoneNumber'] = $customer_info['telephone'];
+                $data['countryCode'] = $this->session->data['shipping_address']['iso_code_2'];
+                $data['postalCode'] = $this->session->data['shipping_address']['postcode'];
+                $data['addressLine'] = $this->session->data['shipping_address']['address_1'];
             } else {
-                $data['email'] = $orderData['guest']['email'];
-                $data['phoneNumber'] = $orderData['guest']['telephone'];
-            }
+                $sameAddress = $this->session->data['guest']['shipping_address'];
 
-            $data['countryCode'] = $sameAddress ? $orderData['payment_address']['iso_code_2'] : $orderData['shipping_address']['iso_code_2'];
-            $data['postalCode'] = $sameAddress ? $orderData['payment_address']['postcode'] : $orderData['shipping_address']['postcode'];
-            $data['addressLine'] = $sameAddress ? $orderData['payment_address']['address_1'] : $orderData['shipping_address']['address_1'];
+                $data['email'] = $this->session->data['guest']['email'];
+                $data['phoneNumber'] = $this->session->data['guest']['telephone'];
+                $data['countryCode'] = $sameAddress ? $this->session->data['payment_address']['iso_code_2'] : $this->session->data['shipping_address']['iso_code_2'];
+                $data['postalCode'] = $sameAddress ? $this->session->data['payment_address']['postcode'] : $this->session->data['shipping_address']['postcode'];
+                $data['addressLine'] = $sameAddress ? $this->session->data['payment_address']['address_1'] : $this->session->data['shipping_address']['address_1'];
+            }
         }
 
         if (isset($data['email']) && $this->validatedEmail($data['email'])) {
