@@ -89,17 +89,15 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         // Journal Checkout
         if ($this->isJournalQuickCheckout() && isset($this->request->post['order_data'])) {
-            $orderData = $this->request->post['order_data'];
             $sameAddress = $this->request->post['same_address'];
 
-            $data['email'] = $orderData['email'];
-            $data['phoneNumber'] = $orderData['telephone'];
-
-            $data['countryCode'] = $sameAddress ? $orderData['payment_iso_code_2'] : $orderData['shipping_iso_code_2'];
-            $data['postalCode'] = $sameAddress ? $orderData['payment_postcode'] : $orderData['shipping_postcode'];
-            $data['addressLine'] = $sameAddress ? $orderData['payment_address_1'] : $orderData['shipping_address_1'];
-
+            $data['email'] = $this->request->post['order_data']['email'];
+            $data['phoneNumber'] = $this->request->post['order_data']['telephone'];
+            $data['countryCode'] = $sameAddress ? $this->request->post['order_data']['payment_iso_code_2'] : $this->request->post['order_data']['shipping_iso_code_2'];
+            $data['postalCode'] = $sameAddress ? $this->request->post['order_data']['payment_postcode'] : $this->request->post['order_data']['shipping_postcode'];
+            $data['addressLine'] = $sameAddress ? $this->request->post['order_data']['payment_address_1'] : $this->request->post['order_data']['shipping_address_1'];
         }
+
 
         // OpenCart Checkout
         if (!$this->isJournalQuickCheckout() && $this->request->get['route'] === 'checkout/payment_method') {
