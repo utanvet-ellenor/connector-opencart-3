@@ -1,9 +1,3 @@
-## Utánvét Ellenőr Modul Opencart 3.x webáruházakhoz
-### Telepítő file előkészítése OpenCart 3-hoz
+## Utánvét Ellenőr modul Opencart 3.x webáruházakhoz
 
-```bash
-|-- upload
-|   |--  admin
-|   |--  catalog
-```
-- Az upload mappát tömörítsük be ocmod.zip file-ba pl.: uvb_connector_1.0_oc3.ocmod.zip-be
+A telepítési útmutatót itt találod: https://utanvet-ellenor.hu/knowledge-base/opencart/opencart-webshop-beallitasa-az-utanvet-ellenorben
