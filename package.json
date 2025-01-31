@@ -1,0 +1,25 @@
+{
+  "name": "connector-opencart-3",
+  "description": "Utánvét Ellenőr integration for Opencart 3",
+  "version": "2.0.0",
+  "author": [
+    {
+      "name": "Balla Sándor",
+      "email": "info@webelite.hu",
+      "homepage": "https://webelite.hu"
+    },
+    {
+      "name": "Utánvét Ellenőr",
+      "email": "hello@utanvet-ellenor.hu",
+      "url": "https://utanvet-ellenor.hu"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/utanvet-ellenor/connector-opencart-3.git"
+  },
+  "scripts": {
+    "version": "git add -A",
+    "postversion": "git push && git push --tags",
+ }
+}
