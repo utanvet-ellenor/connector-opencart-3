@@ -35,51 +35,50 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     }
 
     public function checkCustomerByUVBConnector() {
-        $status = true;
-
         $uvbConnectorGetData = $this->getPayloadDataForUVBCheck();
-
-        if ($uvbConnectorGetData) {
-
-            $this->load->model('extension/module/uvb_connector');
-
-            $response = $this->hasActiveUVB($uvbConnectorGetData['email'])
-                ? $this->session->data['uvb_connector']
-                : $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
-
-            if ($response) {
-
-                if ($this->useSessionLifeTime) {
-                    $response['email'] = $uvbConnectorGetData['email'];
-                    $response['life_time'] = time() + ($this->uvbLifeTime);
-                    $this->session->data['uvb_connector'] = $response;
-                }
-
-                if(isset($response['status']) && $response['status'] == 200
-                    && $response['result']['reputation'] < (float)$this->config->get('module_uvb_connector_reputation_threshold')) {
-                    $status = false;
-                }
-            }
+        if (!$uvbConnectorGetData) {
+            return true;
         }
 
-        return $status;
+        $this->load->model('extension/module/uvb_connector');
+
+        $response = $this->hasActiveUVB($uvbConnectorGetData['email'])
+            ? $this->session->data['uvb_connector']
+            : $this->model_extension_module_uvb_connector->get($uvbConnectorGetData);
+
+        if (!$response) {
+            return true;
+        }
+
+        if ($this->useSessionLifeTime) {
+            $response['email'] = $uvbConnectorGetData['email'];
+            $response['life_time'] = time() + ($this->uvbLifeTime);
+            $this->session->data['uvb_connector'] = $response;
+        }
+
+        $blocked = $response['result']['blocked'] ?? false;
+
+        return !$blocked;
     }
 
     private function isUVBActive() {
         $status = $this->config->get('module_uvb_connector_status');
-        $store_id = (int)$this->config->get('config_store_id');
-        $disabledMethods = $this->config->get('module_uvb_connector_disabled_payment_methods');
-
-        if ($this->config->get('module_uvb_connector_stores')) {
-            $stores = $this->config->get('module_uvb_connector_stores');
-        } else {
-            $stores = array();
+        if (!$status) {
+            return false;
         }
 
-        return $status
-            && in_array($store_id,$stores)
-            && (float)$this->config->get('module_uvb_connector_reputation_threshold') > 0
-            && $disabledMethods;
+        $disabledMethods = $this->config->get('module_uvb_connector_disabled_payment_methods');
+        if (!$disabledMethods) {
+            return false;
+        }
+
+        $store_id = (int) $this->config->get('config_store_id');
+        $stores = $this->config->get('module_uvb_connector_stores');
+        if (!$stores) {
+            return false;
+        }
+
+        return in_array($store_id, $stores);
     }
 
     private function getPayloadDataForUVBCheck() {
@@ -97,7 +96,6 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             $data['postalCode'] = $sameAddress ? $this->request->post['order_data']['payment_postcode'] : $this->request->post['order_data']['shipping_postcode'];
             $data['addressLine'] = $sameAddress ? $this->request->post['order_data']['payment_address_1'] : $this->request->post['order_data']['shipping_address_1'];
         }
-
 
         // OpenCart Checkout
         if (!$this->isJournalQuickCheckout() && $this->request->get['route'] === 'checkout/payment_method') {
@@ -120,62 +118,87 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             }
         }
 
-        if (isset($data['email']) && $this->validatedEmail($data['email'])) {
-            return $data;
+        if (!isset($data['email'])) {
+            return [];
         }
-        return array();
+
+        if (!$this->validatedEmail($data['email'])) {
+            return [];
+        }
+
+        return $data;
     }
 
     private function isJournalQuickCheckout() {
-        return $this->config->get('config_theme') === 'journal3'
-            && $this->request->get['route'] === 'journal3/checkout/save'
-            && $this->journal3->settings->get('activeCheckout') === 'journal';
+        if ($this->config->get('config_theme') !== 'journal3') {
+            return false;
+        }
+
+        if ($this->request->get['route'] !== 'journal3/checkout/save') {
+            return false;
+        }
+
+        return $this->journal3->settings->get('activeCheckout') === 'journal';
     }
 
     // catalog/model/checkout/order/addOrderHistory/after
     public function submitOrderOutcomeToUVBApi(&$route, &$args){
-        if($this->config->get('module_uvb_connector_status')){
-            if (isset($args[0])) {
-                $order_id = $args[0];
-            } else {
-                $order_id = 0;
-            }
-
-            if (isset($args[1])) {
-                $order_status_id = $args[1];
-            } else {
-                $order_status_id = 0;
-            }
-
-            $outcome = 0;
-
-            if($order_status_id == $this->config->get('module_uvb_connector_status_good')){
-                $outcome = 1;
-            }elseif ($order_status_id == $this->config->get('module_uvb_connector_status_bad')){
-                $outcome = -1;
-            }
-
-            $order_info = $this->model_checkout_order->getOrder($order_id);
-
-            if ($order_info && $outcome !== 0) {
-
-                $this->load->model('extension/module/uvb_connector');
-
-                $payload = [
-                    'email' => $order_info['email'],
-                    'outcome' => $outcome,
-                    'orderId' => $order_info['order_id'],
-                    'phoneNumber' => $order_info['telephone'],
-                    'countryCode' => $order_info['shipping_iso_code_2'],
-                    'postalCode' => $order_info['shipping_postcode'],
-                    'addressLine' => $order_info['shipping_address_1'],
-                ];
-
-                // Send data to UVB Connector
-                $this->model_extension_module_uvb_connector->post($payload);
-
-            }
+        if (!$this->config->get('module_uvb_connector_status')) {
+            return;
         }
+
+        $order_id = $args[0] ?? null;
+        if (!$order_id) {
+            return;
+        }
+
+        $order_status_id = $args[1] ?? null;
+        if (!$order_status_id) {
+            return;
+        }
+
+        $goodStatusId = $this->config->get('module_uvb_connector_status_good');
+        $badStatusId = $this->config->get('module_uvb_connector_status_bad');
+
+        if (!in_array($order_status_id, [$goodStatusId, $badStatusId])) {
+            return;
+        }
+
+        switch ($order_status_id) {
+            case $goodStatusId:
+                $outcome = 1;
+                break;
+            case $badStatusId:
+                $outcome = -1;
+                break;
+            default:
+                $outcome = null;
+                break;
+        }
+        if (!$outcome) {
+            return;
+        }
+
+        $order_info = $this->model_checkout_order->getOrder($order_id);
+        if (!$order_info) {
+            return;
+        }
+
+        $this->load->model('extension/module/uvb_connector');
+
+        $payload = [
+            'email' => $order_info['email'],
+            'outcome' => $outcome,
+            'orderId' => $order_info['order_id'],
+            'phoneNumber' => $order_info['telephone'],
+            'countryCode' => $order_info['shipping_iso_code_2'],
+            'postalCode' => $order_info['shipping_postcode'],
+            'addressLine' => $order_info['shipping_address_1'],
+        ];
+
+        // Send data to UVB Connector
+        $this->model_extension_module_uvb_connector->post($payload);
+
     }
 
     /**
@@ -187,18 +210,26 @@ class ControllerExtensionModuleUVBConnector extends Controller {
      */
     private function hasActiveUVB($email)
     {
-        if($email
-            && isset($this->session->data['uvb_connector'])
-            && $this->session->data['uvb_connector']['status'] == 200
-            && $this->session->data['uvb_connector']['email'] == $email){
-            if ((int)$this->session->data['uvb_connector']['life_time'] < time() ){
-                unset($this->session->data['uvb_connector']);
-                return false;
-            }else{
-                return true;
-            }
+        if (!$email) {
+            return false;
         }
-        return false;
+
+        if (!isset($this->session->data['uvb_connector'])) {
+            return false;
+        }
+
+        if ($this->session->data['uvb_connector']['email'] != $email) {
+            return false;
+        }
+
+        $lifetime = (int)$this->session->data['uvb_connector']['life_time'];
+        if ($lifetime <= time()) {
+            unset($this->session->data['uvb_connector']);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -220,18 +251,15 @@ class ControllerExtensionModuleUVBConnector extends Controller {
      */
     private function log($type,$data)
     {
-        if ($this->config->get('module_uvb_connector_log')){
-            if (is_array($data)) {
-                $message = json_encode($data);
-            } else {
-                $message = $data;
-            }
-            $log = new \Log('uv_connector_event_log.log');
-
-            $log->write( $type . ' - ' . $message);
-
-            unset($log);
+        if (!$this->config->get('module_uvb_connector_log')) {
+            return;
         }
-    }
 
+        $message = is_array($data) ? json_encode($data) : $data;
+
+        $log = new \Log('uv_connector_event_log.log');
+        $log->write( $type . ' - ' . $message);
+
+        unset($log);
+    }
 }
