@@ -1,7 +1,7 @@
 {
   "name": "connector-opencart-3",
   "description": "Utánvét Ellenőr integration for Opencart 3",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": [
     {
       "name": "Balla Sándor",
@@ -21,5 +21,5 @@
   "scripts": {
     "version": "git add -A",
     "postversion": "git push && git push --tags"
- }
+  }
 }
