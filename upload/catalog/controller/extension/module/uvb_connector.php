@@ -87,7 +87,8 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         );
 
         // Journal Checkout
-        if ($this->isJournalQuickCheckout() && isset($this->request->post['order_data'])) {
+        if ($this->isJournalQuickCheckout()) {
+            $this->log('info','Journal Checkout');
             $sameAddress = $this->request->post['same_address'];
 
             $data['email'] = $this->request->post['order_data']['email'];
@@ -95,10 +96,15 @@ class ControllerExtensionModuleUVBConnector extends Controller {
             $data['countryCode'] = $sameAddress ? $this->request->post['order_data']['payment_iso_code_2'] : $this->request->post['order_data']['shipping_iso_code_2'];
             $data['postalCode'] = $sameAddress ? $this->request->post['order_data']['payment_postcode'] : $this->request->post['order_data']['shipping_postcode'];
             $data['addressLine'] = $sameAddress ? $this->request->post['order_data']['payment_address_1'] : $this->request->post['order_data']['shipping_address_1'];
+
+            if ($this->validatedEmail($data['email'])) {
+                return $data;
+            }
         }
 
         // OpenCart Checkout
-        if (!$this->isJournalQuickCheckout() && $this->request->get['route'] === 'checkout/payment_method') {
+        if ($this->isOpenCartCheckout()) {
+            $this->log('info','Opencart Checkout');
             if ($this->customer->isLogged()) {
                 $this->load->model('account/customer');
                 $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
@@ -116,17 +122,61 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                 $data['postalCode'] = $sameAddress ? $this->session->data['payment_address']['postcode'] : $this->session->data['shipping_address']['postcode'];
                 $data['addressLine'] = $sameAddress ? $this->session->data['payment_address']['address_1'] : $this->session->data['shipping_address']['address_1'];
             }
+
+            if ($this->validatedEmail($data['email'])) {
+                return $data;
+            }
         }
 
-        if (!isset($data['email'])) {
-            return [];
+        // xtensions Best Checkout
+        if ($this->isXtensionCheckout()) {
+            $this->log('info','Best Checkout');
+
+            if ($this->customer->isLogged()) {
+                $this->load->model('account/customer');
+                $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
+                $data['email'] = $customer_info['email'];
+                $data['phoneNumber'] = $customer_info['telephone'];
+                $data['countryCode'] = $this->session->data['shipping_address']['iso_code_2'];
+                $data['postalCode'] = $this->session->data['shipping_address']['postcode'];
+                $data['addressLine'] = $this->session->data['shipping_address']['address_1'];
+            } else {
+                $sameAddress = $this->session->data['shipping_same_guest'];
+
+                $data['email'] = $this->session->data['guest']['email'];
+                $data['phoneNumber'] = $this->session->data['guest']['telephone'];
+                $data['countryCode'] = $sameAddress ? $this->session->data['payment_address']['iso_code_2'] : $this->session->data['shipping_address']['iso_code_2'];
+                $data['postalCode'] = $sameAddress ? $this->session->data['payment_address']['postcode'] : $this->session->data['shipping_address']['postcode'];
+                $data['addressLine'] = $sameAddress ? $this->session->data['payment_address']['address_1'] : $this->session->data['shipping_address']['address_1'];
+            }
+
+            if ($this->validatedEmail($data['email'])) {
+                return $data;
+            }
         }
 
-        if (!$this->validatedEmail($data['email'])) {
-            return [];
+        return [];
+
+    }
+
+    private function isXtensionCheckout() {
+        if ($this->request->get['route'] === 'extension/module/xtensions/checkout/xpayment_method') {
+            return true;
         }
 
-        return $data;
+        return false;
+    }
+
+    private function isOpenCartCheckout() {
+        if ($this->isJournalQuickCheckout()) {
+            return false;
+        }
+
+        if ($this->request->get['route'] !== 'checkout/payment_method') {
+            return false;
+        }
+
+        return true;
     }
 
     private function isJournalQuickCheckout() {
@@ -135,6 +185,10 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         }
 
         if ($this->request->get['route'] !== 'journal3/checkout/save') {
+            return false;
+        }
+
+        if (!isset($this->request->post['order_data'])) {
             return false;
         }
 

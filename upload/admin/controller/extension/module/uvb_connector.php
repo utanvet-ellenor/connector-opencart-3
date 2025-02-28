@@ -9,7 +9,7 @@
 
 class ControllerExtensionModuleUVBConnector extends Controller {
     const LOG_FILENAME = "uvb_connector.log";
-    const UVB_MODULE_VERSION = '2.0';
+    const UVB_MODULE_VERSION = '2.1';
     const EVENT_POST = 'uvb_connector_post';
     const EVENT_MENU = 'uvb_connector_admin_menu';
     const EVENT_MENU_ICON = 'uvb_admin_menu_icon';
