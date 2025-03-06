@@ -383,5 +383,4 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     private function addXpaymentEvent() {
         $this->model_setting_event->addEvent(self::EVENT_X_PAYMENT, 'catalog/model/extension/payment/xpayment/getMethod/after', 'extension/module/uvb_connector/handleXPaymentMethod');
     }
-
 }
