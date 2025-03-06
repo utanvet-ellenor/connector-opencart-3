@@ -9,15 +9,18 @@
 
 class ControllerExtensionModuleUVBConnector extends Controller {
     const LOG_FILENAME = "uvb_connector.log";
-    const UVB_MODULE_VERSION = '2.1.0';
+    const UVB_MODULE_VERSION = '2.2';
     const EVENT_POST = 'uvb_connector_post';
     const EVENT_MENU = 'uvb_connector_admin_menu';
     const EVENT_MENU_ICON = 'uvb_admin_menu_icon';
     const EVENT_PAYMENT = 'uvb_connector_payment_';
+    const EVENT_X_PAYMENT = 'uvb_connector_x_payment';
 
     private $error = array();
 
     public function index() {
+
+        $this->update();
 
         $this->load->language('extension/module/uvb_connector');
 
@@ -336,6 +339,8 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         $this->model_setting_event->addEvent(self::EVENT_POST, 'catalog/model/checkout/order/addOrderHistory/after', 'extension/module/uvb_connector/submitOrderOutcomeToUVBApi');
         $this->model_setting_event->addEvent(self::EVENT_MENU, 'admin/view/common/column_left/before', 'extension/module/uvb_connector/addUVBConnectorMenuToAdminMenu');
         $this->model_setting_event->addEvent(self::EVENT_MENU_ICON, 'admin/view/common/column_left/after', 'extension/module/uvb_connector/modifyAdminMenuIcon');
+
+        $this->addXpaymentEvent();
     }
 
     public function uninstall(){
@@ -345,6 +350,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
         $this->model_setting_event->deleteEventByCode(self::EVENT_POST);
         $this->model_setting_event->deleteEventByCode(self::EVENT_MENU);
         $this->model_setting_event->deleteEventByCode(self::EVENT_MENU_ICON);
+        $this->model_setting_event->deleteEventByCode(self::EVENT_X_PAYMENT);
 
         $this->deletePaymentMethodEvents();
     }
@@ -363,6 +369,19 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                 $this->model_setting_event->deleteEventByCode(self::EVENT_PAYMENT . $extension);
             }
         }
+    }
+
+    private function update() {
+        $this->load->model('setting/event');
+
+        $xpayment = $this->model_setting_event->getEventByCode(self::EVENT_X_PAYMENT);
+        if (!$xpayment) {
+            $this->addXpaymentEvent();
+        }
+    }
+
+    private function addXpaymentEvent() {
+        $this->model_setting_event->addEvent(self::EVENT_X_PAYMENT, 'catalog/model/extension/payment/xpayment/getMethod/after', 'extension/module/uvb_connector/handleXPaymentMethod');
     }
 
 }

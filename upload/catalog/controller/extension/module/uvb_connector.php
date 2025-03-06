@@ -8,6 +8,12 @@
  */
 
 class ControllerExtensionModuleUVBConnector extends Controller {
+
+    /**
+     * Log file
+     */
+    const LOG_FILENAME = 'uv_connector_event_log.log';
+
     /**
      * UVB Session LifeTime in minute
      * @var int
@@ -20,17 +26,36 @@ class ControllerExtensionModuleUVBConnector extends Controller {
     private $useSessionLifeTime = true;
 
     /**
-     * Handle Payment Method
+     * Handle OpenCart Payment Method
      *
      * @param $route
      * @param $data
      * @param $method_data
      * @return void
      */
-    // catalog/model/extension/payment/cod/getMethod/after
+    //  catalog/model/extension/payment/cod/getMethod/after
     public function handlePaymentMethod(&$route,&$data,&$method_data) {
         if($this->cart->hasShipping() && $this->isUVBActive() && !$this->checkCustomerByUVBConnector()) {
             $method_data = array();
+        }
+    }
+
+    /**
+     * Handle XPayment Methods
+     *
+     * @param $route
+     * @param $data
+     * @param $method_data
+     * @return void
+     */
+    // catalog/model/extension/payment/xpayment/getMethod/after
+    public function handleXPaymentMethod(&$route,&$data,&$method_data) {
+        // Route: extension/payment/xpayment/getMethod
+        if($this->cart->hasShipping() && $this->isUVBActive() && !$this->checkCustomerByUVBConnector()) {
+            $disabledMethods = $this->config->get('module_uvb_connector_disabled_payment_methods');
+            foreach ($disabledMethods as $code) {
+                $this->config->set('payment_' . $code . '_status', false);
+            }
         }
     }
 
@@ -88,7 +113,6 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         // Journal Checkout
         if ($this->isJournalQuickCheckout()) {
-            $this->log('info','Journal Checkout');
             $sameAddress = $this->request->post['same_address'];
 
             $data['email'] = $this->request->post['order_data']['email'];
@@ -104,7 +128,6 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         // OpenCart Checkout
         if ($this->isOpenCartCheckout()) {
-            $this->log('info','Opencart Checkout');
             if ($this->customer->isLogged()) {
                 $this->load->model('account/customer');
                 $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
@@ -130,8 +153,6 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         // xtensions Best Checkout
         if ($this->isXtensionCheckout()) {
-            $this->log('info','Best Checkout');
-
             if ($this->customer->isLogged()) {
                 $this->load->model('account/customer');
                 $customer_info = $this->model_account_customer->getCustomer($this->customer->getId());
@@ -311,7 +332,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
 
         $message = is_array($data) ? json_encode($data) : $data;
 
-        $log = new \Log('uv_connector_event_log.log');
+        $log = new \Log(self::LOG_FILENAME);
         $log->write( $type . ' - ' . $message);
 
         unset($log);
