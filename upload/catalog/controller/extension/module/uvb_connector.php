@@ -162,7 +162,7 @@ class ControllerExtensionModuleUVBConnector extends Controller {
                 $data['postalCode'] = $this->session->data['shipping_address']['postcode'];
                 $data['addressLine'] = $this->session->data['shipping_address']['address_1'];
             } else {
-                $sameAddress = isset($this->session->data['shipping_same_guest']) && $this->session->data['shipping_same_guest'];
+                $sameAddress = $this->session->data['shipping_same_guest'] ?? false;
 
                 $data['email'] = $this->session->data['guest']['email'];
                 $data['phoneNumber'] = $this->session->data['guest']['telephone'];
